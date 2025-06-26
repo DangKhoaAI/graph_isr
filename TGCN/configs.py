@@ -66,5 +66,5 @@ def create_arg_parser():
 
 
 if __name__ == '__main__':
-    config_path = '/home/dxli/workspace/nslt/code/VGG-GRU/configs/test.ini'
+    config_path = '/mnt/data/Work/Project/RESEARCH/Handsign-code/WLASL/TGCN/config.ini'
     print(str(Config(config_path)))
