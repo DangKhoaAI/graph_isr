@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 import utils
 from configs import Config, create_arg_parser
 from tgcn_model import GCN_muti_att
-from sign_dataset import Sign_Dataset
+from lmdb_sign_dataset import LMDBSignDataset
 from train_utils import train, validation
 
 
@@ -23,7 +23,7 @@ def run(configs, args):
     
     # Build paths
     split_file = os.path.join(configs.splits_dir, f'{args.subset}.json')
-    pose_data_root = configs.pose_data_root
+    lmdb_path = configs.lmdb_path
     
     # Create output directories
     os.makedirs(configs.output_dir, exist_ok=True)
@@ -37,20 +37,16 @@ def run(configs, args):
     num_stages = configs.num_stages
 
     # setup dataset
-    train_dataset = Sign_Dataset(index_file_path=split_file, split=['train', 'val'], pose_root=pose_data_root,
-                                 img_transforms=None, video_transforms=None, num_samples=num_samples,
-                                 features_dir=configs.features_dir)
+    train_dataset = LMDBSignDataset(index_file_path=split_file, split=['train', 'val'], lmdb_path=lmdb_path,
+                                 num_samples=num_samples, sample_strategy='rnd_start')
 
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=configs.batch_size,
-                                                    shuffle=True)
+                                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
-    val_dataset = Sign_Dataset(index_file_path=split_file, split='test', pose_root=pose_data_root,
-                               img_transforms=None, video_transforms=None,
-                               num_samples=num_samples,
-                               sample_strategy='k_copies',
-                               features_dir=configs.features_dir)
+    val_dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
+                               num_samples=num_samples, sample_strategy='k_copies')
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=configs.batch_size,
-                                                  shuffle=True)
+                                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
     logging.info('\n'.join(['Class labels are: '] + [(str(i) + ' - ' + label) for i, label in
                                                      enumerate(train_dataset.label_encoder.classes_)]))
@@ -58,7 +54,8 @@ def run(configs, args):
     # setup the model
     model = GCN_muti_att(input_feature=num_samples*2, hidden_feature=num_samples*2,
                          num_class=len(train_dataset.label_encoder.classes_), p_dropout=drop_p, num_stage=num_stages).cuda()
-
+    model = GCN_muti_att(input_feature=num_samples*2, hidden_feature=configs.hidden_size,
+                         num_class=len(train_dataset.label_encoder.classes_), p_dropout=drop_p, num_stage=num_stages).cuda()
     # setup training parameters, learning rate, optimizer, scheduler
     lr = configs.init_lr
     optimizer = optim.Adam(model.parameters(), lr=lr, eps=configs.adam_eps, weight_decay=configs.adam_weight_decay)
@@ -119,6 +116,8 @@ def run(configs, args):
 
 if __name__ == "__main__":
     parser = create_arg_parser()
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='Number of data loading workers (default: 4)')
     args = parser.parse_args()
     
     # Use subset-specific config if available, otherwise use default

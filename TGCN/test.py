@@ -2,7 +2,7 @@ import os
 import argparse
 
 from configs import Config, create_arg_parser
-from sign_dataset import Sign_Dataset
+from lmdb_sign_dataset import LMDBSignDataset
 import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
@@ -90,7 +90,9 @@ if __name__ == '__main__':
     parser.add_argument('--test_subset', type=str, default=None,
                         help='Test dataset subset (if different from training subset)')
     parser.add_argument('--archive_dir', type=str, default=None,
-                        help='Archive directory path (overrides config)')
+                        help='Archived models directory path (overrides config)') # Renamed to archive_dir for consistency
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='Number of data loading workers (default: 4)')
     args = parser.parse_args()
     
     # Set GPU device
@@ -104,29 +106,25 @@ if __name__ == '__main__':
         
     configs = Config(config_file)
     
-    # Override config values with command line arguments if provided
+    # Override config values with command line arguments if provided, using correct config names
     checkpoint_name = args.checkpoint if args.checkpoint else configs.checkpoint_name
-    archive_dir = args.archive_dir if args.archive_dir else configs.archive_dir
+    archive_dir_path = args.archived_dir if args.archived_dir else configs.archive_dir
     test_subset = args.test_subset if args.test_subset else args.subset
 
     # Build paths
     split_file = os.path.join(configs.splits_dir, f'{args.subset}.json')
-    checkpoint_path = os.path.join(archive_dir, args.subset, checkpoint_name)
+    checkpoint_path = os.path.join(archive_dir_path, args.subset, checkpoint_name)
+    lmdb_path = configs.lmdb_path
 
     num_samples = configs.num_samples
     hidden_size = configs.hidden_size
     drop_p = configs.drop_p
     num_stages = configs.num_stages
     batch_size = configs.batch_size
-
-    dataset = Sign_Dataset(index_file_path=split_file, split='test', pose_root=configs.pose_data_root,
-                           img_transforms=None, video_transforms=None,
-                           num_samples=num_samples,
-                           sample_strategy='k_copies',
-                           test_index_file=split_file,
-                           features_dir=configs.features_dir
-                           )
-    data_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
+    dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
+                           num_samples=num_samples, sample_strategy='k_copies')
+    data_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True,
+                                               num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
     # setup the model
     model = GCN_muti_att(input_feature=num_samples * 2, hidden_feature=hidden_size,

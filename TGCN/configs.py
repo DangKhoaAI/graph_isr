@@ -19,6 +19,7 @@ class Config:
         self.output_dir = paths_config['OUTPUT_DIR']
         self.config_dir = paths_config['CONFIG_DIR']
         self.archive_dir = paths_config['ARCHIVE_DIR']
+        self.lmdb_path = paths_config['LMDB_PATH']
 
         # training
         train_config = config['TRAIN']
