@@ -8,7 +8,7 @@ from multiprocessing import Pool
 
 # Import necessary functions/classes from existing files
 from configs import Config, create_arg_parser
-from sign_dataset import read_pose_file
+from pose_utils import read_pose_file
 
 def build_lmdb_for_instance(args):
     """Helper function to process a single instance for multiprocessing."""
@@ -25,8 +25,8 @@ def build_lmdb_for_instance(args):
     # Iterate through all frames for the instance
     for i in range(frame_start, frame_end + 1):
         pose_path = os.path.join(pose_root, video_id, f"image_{str(i).zfill(5)}_keypoints.json")
-        # read_pose_file handles .pt caching and on-the-fly feature extraction
-        xy = read_pose_file(pose_path, features_dir)
+        # read_pose_file handles on-the-fly feature extraction
+        xy = read_pose_file(pose_path)
         if xy is not None:
             pose_seq.append(xy)
         elif pose_seq: # If previous frames exist, use the last valid pose

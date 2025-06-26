@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 import utils # Assuming utils.py contains labels2cat
-from sign_dataset import rand_start_sampling, sequential_sampling, k_copies_fixed_length_sequential_sampling # Reuse sampling functions
+from sampling_utils import rand_start_sampling, sequential_sampling, k_copies_fixed_length_sequential_sampling # Reuse sampling functions
 
 
 class LMDBSignDataset(Dataset):
