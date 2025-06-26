@@ -13,6 +13,14 @@ from tgcn_model import GCN_muti_att
 from lmdb_sign_dataset import LMDBSignDataset
 from train_utils import train, validation
 
+def safe_collate(batch):
+    if len(batch[0]) == 3:
+        xs, ys, _ = zip(*batch)
+    else:
+        xs, ys = zip(*batch)
+    xs = torch.stack(xs)
+    ys = torch.tensor(ys)
+    return xs, ys
 
 def run(configs, args):
     # Set GPU device
@@ -41,12 +49,12 @@ def run(configs, args):
                                  num_samples=num_samples, sample_strategy='rnd_start', return_video_id=False)
 
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=configs.batch_size,
-                                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
+                                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True, collate_fn=safe_collate)
 
     val_dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
                                num_samples=num_samples, sample_strategy='k_copies', return_video_id=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=configs.batch_size,
-                                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
+                                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True, collate_fn=safe_collate)
 
     logging.info('\n'.join(['Class labels are: '] + [(str(i) + ' - ' + label) for i, label in
                                                      enumerate(train_dataset.label_encoder.classes_)]))

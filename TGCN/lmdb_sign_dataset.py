@@ -60,9 +60,7 @@ class LMDBSignDataset(Dataset):
 
         # Deserialize the numpy array and convert to torch tensor
         # The stored data is (num_frames_in_instance, 55, 2)
-        full_pose_sequence = torch.from_numpy(
-            np.frombuffer(data_bytes, dtype=np.float32).copy().reshape(-1, 55, 2)
-        )
+        full_pose_sequence = torch.from_numpy( np.frombuffer(data_bytes, dtype=np.float32).copy().reshape(-1, 55, 2))
         num_frames_in_instance = full_pose_sequence.shape[0]
 
         # Apply sampling strategy
