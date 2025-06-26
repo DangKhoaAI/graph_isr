@@ -31,9 +31,6 @@ def gen(entry_list, pose_data_root, features_dir, body_pose_exclude):
 
             save_to = os.path.join(features_dir, vid)
 
-            if not os.path.exists(save_to):
-                os.makedirs(save_to, exist_ok=True)
-
             for frame_id in range(frame_start, frame_end + 1):
                 frame_id = 'image_{}'.format(str(frame_id).zfill(5))
 
@@ -93,6 +90,14 @@ if __name__ == '__main__':
     with open(index_file_path, 'r') as f:
         content = json.load(f)
 
+    # Before Pool: create all necessary directories to avoid race conditions
+    print("Pre-creating all feature directories...")
+    for entry in content:
+        for instance in entry['instances']:
+            vid = instance['video_id']
+            save_to = os.path.join(configs.features_dir, vid)
+            os.makedirs(save_to, exist_ok=True)
+
     start_time = time.time()
     
     # Split entries for multiprocessing
@@ -119,4 +124,3 @@ if __name__ == '__main__':
     p.join()
     
     print("Feature generation completed in {:.2f} seconds".format(time.time() - start_time))
-
