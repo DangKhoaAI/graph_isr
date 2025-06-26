@@ -54,7 +54,7 @@ def run(configs, args):
     val_dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
                                num_samples=num_samples, sample_strategy='k_copies', return_video_id=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=configs.batch_size,
-                                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True, collate_fn=safe_collate)
+                                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
     logging.info('\n'.join(['Class labels are: '] + [(str(i) + ' - ' + label) for i, label in
                                                      enumerate(train_dataset.label_encoder.classes_)]))
