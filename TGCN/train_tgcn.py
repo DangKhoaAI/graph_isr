@@ -38,13 +38,13 @@ def run(configs, args):
 
     # setup dataset
     train_dataset = LMDBSignDataset(index_file_path=split_file, split=['train', 'val'], lmdb_path=lmdb_path,
-                                 num_samples=num_samples, sample_strategy='rnd_start')
+                                 num_samples=num_samples, sample_strategy='rnd_start', return_video_id=False)
 
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=configs.batch_size,
                                                     shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
     val_dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
-                               num_samples=num_samples, sample_strategy='k_copies')
+                               num_samples=num_samples, sample_strategy='k_copies', return_video_id=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=configs.batch_size,
                                                   shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 

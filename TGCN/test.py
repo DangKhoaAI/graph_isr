@@ -121,8 +121,8 @@ if __name__ == '__main__':
     drop_p = configs.drop_p
     num_stages = configs.num_stages
     batch_size = configs.batch_size
-    dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
-                           num_samples=num_samples, sample_strategy='k_copies')
+    dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path, num_samples=num_samples,
+                              sample_strategy='k_copies', return_video_id=True)
     data_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True,
                                                num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 

@@ -15,7 +15,7 @@ from sampling_utils import rand_start_sampling, sequential_sampling, k_copies_fi
 
 
 class LMDBSignDataset(Dataset):
-    def __init__(self, index_file_path, split, lmdb_path, sample_strategy='rnd_start', num_samples=25, num_copies=4):
+    def __init__(self, index_file_path, split, lmdb_path, sample_strategy='rnd_start', num_samples=25, num_copies=4, return_video_id=False):
         assert os.path.exists(index_file_path), f"Non-existent indexing file path: {index_file_path}"
         assert os.path.exists(lmdb_path), f"LMDB path does not exist: {lmdb_path}"
 
@@ -31,6 +31,7 @@ class LMDBSignDataset(Dataset):
         self.sample_strategy = sample_strategy
         self.num_samples = num_samples
         self.num_copies = num_copies
+        self.return_video_id = return_video_id
 
         # Open LMDB environment in __init__
         self.env = lmdb.open(lmdb_path, readonly=True, lock=False)
@@ -51,13 +52,17 @@ class LMDBSignDataset(Dataset):
             # This should ideally not happen if LMDB is built correctly
             # Fallback: return a zero tensor or handle error
             print(f"Warning: Key {key.decode('ascii')} not found in LMDB. Returning zero tensor.")
-            # Assuming pose features are (num_keypoints, 2) = (55, 2)
-            # And we need num_samples frames
-            return torch.zeros((self.num_samples, 55, 2)), gloss_cat, video_id
+            x = torch.zeros((55, self.num_samples * 2))
+            if self.return_video_id:
+                return x, gloss_cat, video_id
+            else:
+                return x, gloss_cat
 
         # Deserialize the numpy array and convert to torch tensor
         # The stored data is (num_frames_in_instance, 55, 2)
-        full_pose_sequence = torch.from_numpy(np.frombuffer(data_bytes, dtype=np.float32).reshape(-1, 55, 2))
+        full_pose_sequence = torch.from_numpy(
+            np.frombuffer(data_bytes, dtype=np.float32).copy().reshape(-1, 55, 2)
+        )
         num_frames_in_instance = full_pose_sequence.shape[0]
 
         # Apply sampling strategy
@@ -89,7 +94,10 @@ class LMDBSignDataset(Dataset):
 
         y = gloss_cat
 
-        return x, y, video_id
+        if self.return_video_id:
+            return x, y, video_id
+        else:
+            return x, y
 
     def _make_dataset(self, index_file_path, split):
         with open(index_file_path, 'r') as f:

@@ -15,7 +15,7 @@ def train(log_interval, model, train_loader, optimizer, epoch):
 
     N_count = 0  # counting total trained sample in one epoch
     for batch_idx, data in enumerate(train_loader):
-        X, y, video_ids = data
+        X, y = data
         # distribute data to device
         X, y = X.cuda(), y.cuda().view(-1, )
 
