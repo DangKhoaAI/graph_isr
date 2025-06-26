@@ -56,7 +56,7 @@ def read_pose_file(filepath, features_dir=None):
         return xy
 
     except FileNotFoundError:
-        print(filepath)
+        #print(filepath)
         body_pose = content["pose_keypoints_2d"]
         left_hand_pose = content["hand_left_keypoints_2d"]
         right_hand_pose = content["hand_right_keypoints_2d"]
