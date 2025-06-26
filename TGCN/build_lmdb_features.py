@@ -11,44 +11,46 @@ from configs import Config, create_arg_parser
 from pose_utils import read_pose_file
 
 def build_lmdb_for_instance(args):
-    """Helper function to process a single instance for multiprocessing."""
     instance_entry, pose_root, features_dir, lmdb_path = args
     video_id, gloss_cat, frame_start, frame_end = instance_entry
 
-    # Open LMDB environment in each process (important for multiprocessing)
-    # map_size should be large enough to hold the entire dataset
-    # max_readers is important for multiprocessing writes
     env = lmdb.open(lmdb_path, map_size=1099511627776, max_readers=126)
     txn = env.begin(write=True)
 
     pose_seq = []
-    # Iterate through all frames for the instance
     for i in range(frame_start, frame_end + 1):
         pose_path = os.path.join(pose_root, video_id, f"image_{str(i).zfill(5)}_keypoints.json")
-        # read_pose_file handles on-the-fly feature extraction
         xy = read_pose_file(pose_path)
         if xy is not None:
             pose_seq.append(xy)
-        elif pose_seq: # If previous frames exist, use the last valid pose
+        elif pose_seq:
             pose_seq.append(pose_seq[-1])
-        else: # If no valid pose yet, append a zero tensor (should be rare for start of video)
-            # Assuming 55 keypoints, 2 coordinates (x, y)
+        else:
             pose_seq.append(torch.zeros((55, 2)))
 
-    if not pose_seq: # Handle cases where no valid frames were found for an instance
-        print(f"Warning: No valid poses found for video_id: {video_id}, frames {frame_start}-{frame_end}")
-        txn.abort() # Abort transaction if no data to write
+    if not pose_seq:
+        print(f"Warning: No valid poses for {video_id}, frames {frame_start}-{frame_end}")
+        txn.abort()
         env.close()
         return
 
-    # Stack all collected poses for the instance
-    # The shape will be (num_frames_in_instance, 55, 2)
+    total_frames = len(pose_seq)
+    target_frames = 50
+
+    if total_frames >= target_frames:
+        # Randomly select a consecutive 50-frame segment
+        start_idx = torch.randint(0, total_frames - target_frames + 1, (1,)).item()
+        pose_seq = pose_seq[start_idx:start_idx + target_frames]
+    else:
+        # Pad the sequence with the last frame to reach 50
+        last_frame = pose_seq[-1]
+        pose_seq += [last_frame] * (target_frames - total_frames)
+
+    # Convert to tensor shape: (50, 55, 2)
     pose_tensor = torch.stack(pose_seq)
 
-    # Store the full sequence in LMDB
-    # Key should uniquely identify the instance
     key = f"{video_id}_{frame_start}_{frame_end}".encode("ascii")
-    txn.put(key, pose_tensor.numpy().tobytes())
+    txn.put(key, pose_tensor.numpy().astype('float32').tobytes())
 
     txn.commit()
     env.close()
