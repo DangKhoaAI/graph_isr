@@ -141,7 +141,7 @@ if __name__ == '__main__':
                         help='Number of processes for multiprocessing LMDB build')
     args = parser.parse_args()
 
-    configs = get_config_from_args(args)
+    configs = get_config_from_args(args) 
 
     print(f"Building LMDB for subset: {args.subset}")
     build_lmdb_database(configs, args)

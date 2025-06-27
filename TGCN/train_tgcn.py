@@ -1,13 +1,12 @@
 import logging
 import os
-
 import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import utils
-from configs import Config, create_arg_parser
+from configs import create_arg_parser, get_config_from_args
 from tgcn_model import GCN_muti_att
 from lmdb_sign_dataset import LMDBSignDataset
 from train_utils import train, validation
@@ -22,8 +21,6 @@ def safe_collate(batch):
 def run(configs, args):
     # Set GPU device
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    
-    # Build paths
     split_file = os.path.join(configs.splits_dir, f'{args.subset}.json')
     lmdb_path = configs.lmdb_path
     
@@ -31,22 +28,15 @@ def run(configs, args):
     os.makedirs(configs.output_dir, exist_ok=True)
     os.makedirs(os.path.join(configs.checkpoints_dir, args.subset), exist_ok=True)
     
-    epochs = configs.max_epochs
-    log_interval = configs.log_interval
-    num_samples = configs.num_samples
-    hidden_size = configs.hidden_size
-    drop_p = configs.drop_p
-    num_stages = configs.num_stages
-
     # setup dataset
     train_dataset = LMDBSignDataset(index_file_path=split_file, split=['train', 'val'], lmdb_path=lmdb_path,
-                                 num_samples=num_samples, sample_strategy='rnd_start', return_video_id=False)
+                                 num_samples=configs.num_samples, sample_strategy='rnd_start', return_video_id=False)
 
     train_data_loader = DataLoader(dataset=train_dataset, batch_size=configs.batch_size,
                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True, collate_fn=safe_collate)
 
     val_dataset = LMDBSignDataset(index_file_path=split_file, split='test', lmdb_path=lmdb_path,
-                               num_samples=num_samples, sample_strategy='k_copies', return_video_id=True)
+                               num_samples=configs.num_samples, sample_strategy='k_copies', return_video_id=True)
     val_data_loader = DataLoader(dataset=val_dataset, batch_size=configs.batch_size,
                                  shuffle=True, num_workers=args.num_workers, pin_memory=True, persistent_workers=True)
 
@@ -54,11 +44,10 @@ def run(configs, args):
                                                      enumerate(train_dataset.label_encoder.classes_)]))
 
     # setup the model
-    model = GCN_muti_att(input_feature=num_samples*2, hidden_feature=configs.hidden_size,
-                         num_class=len(train_dataset.label_encoder.classes_), p_dropout=drop_p, num_stage=num_stages).cuda()
+    model = GCN_muti_att(input_feature=configs.num_samples*2, hidden_feature=configs.hidden_size,
+                         num_class=len(train_dataset.label_encoder.classes_), p_dropout=configs.drop_p, num_stage=configs.num_stages).cuda()
     # setup training parameters, learning rate, optimizer, scheduler
-    lr = configs.init_lr
-    optimizer = optim.Adam(model.parameters(), lr=lr, eps=configs.adam_eps, weight_decay=configs.adam_weight_decay)
+    optimizer = optim.Adam(model.parameters(), lr=configs.init_lr, eps=configs.adam_eps, weight_decay=configs.adam_weight_decay)
 
     # record training process
     epoch_train_losses = []
@@ -68,10 +57,10 @@ def run(configs, args):
 
     best_test_acc = 0
     # start training
-    for epoch in range(int(epochs)):
+    for epoch in range(int(configs.max_epochs)):
         # train, test model
         print('start training.')
-        train_losses, train_scores, train_gts, train_preds = train(log_interval, model,
+        train_losses, train_scores, train_gts, train_preds = train(configs.log_interval, model,
                                                                    train_data_loader, optimizer, epoch)
         print('start testing.')
         val_loss, val_score, val_gts, val_preds, incorrect_samples = validation(model,
