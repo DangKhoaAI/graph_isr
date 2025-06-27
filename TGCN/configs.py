@@ -66,6 +66,31 @@ def create_arg_parser():
     return parser
 
 
+def get_config_from_args(args):
+    """
+    Resolves the config file path from arguments and returns a Config object.
+    It prioritizes a user-specified config file via the --config argument.
+    If --config is not specified, it then prioritizes a subset-specific config file
+    if it exists in the 'configs' directory, before falling back to the default.
+    """
+    # The default value for --config is 'config.ini'
+    # If the user provides a different value, we prioritize it.
+    if args.config != 'config.ini':
+        config_file = args.config
+    else:
+        # If the user did not specify a custom config, use the subset-based logic
+        subset_config_path = os.path.join('configs', f'{args.subset}.ini')
+        if os.path.exists(subset_config_path):
+            config_file = subset_config_path
+        else:
+            config_file = args.config  # Fallback to the default 'config.ini'
+
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+    print(f"Loading configuration from: {config_file}")
+    return Config(config_file)
+
+
 if __name__ == '__main__':
     config_path = '/mnt/data/Work/Project/RESEARCH/Handsign-code/WLASL/TGCN/config.ini'
     print(str(Config(config_path)))
