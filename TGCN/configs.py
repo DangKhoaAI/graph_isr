@@ -34,8 +34,10 @@ class Config:
 
         # training
         train_config = config['TRAIN']
-        self.batch_size = int(train_config['BATCH_SIZE'])
-        self.max_epochs = int(train_config['MAX_EPOCHS'])
+        # Prioritize command-line args, then fall back to config file, then use hardcoded defaults
+        self.batch_size = args.batch_size if args.batch_size is not None else int(train_config.get('BATCH_SIZE', 64))
+        self.max_epochs = args.max_epochs if args.max_epochs is not None else int(train_config.get('MAX_EPOCHS', 200))
+
         self.log_interval = int(train_config['LOG_INTERVAL'])
         self.num_samples = int(train_config['NUM_SAMPLES'])
         self.drop_p = float(train_config['DROP_P'])
@@ -74,6 +76,10 @@ def create_arg_parser():
                         help='Pose data root directory path. Overrides value from config file.')
     parser.add_argument('--splits_root', type=str, default=None,
                         help='Splits root directory path. Overrides value from config file.')
+    parser.add_argument('--max_epochs', type=int, default=None,
+                        help='Maximum number of training epochs. Overrides value from config file.')
+    parser.add_argument('--batch_size', type=int, default=None,
+                        help='Batch size for training. Overrides value from config file.')
     parser.add_argument('--checkpoint', type=str, default=None,
                         help='Checkpoint filename (overrides config)')
     parser.add_argument('--gpu', type=str, default='0',
