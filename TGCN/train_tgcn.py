@@ -60,8 +60,6 @@ def run(configs, args):
                                                      enumerate(train_dataset.label_encoder.classes_)]))
 
     # setup the model
-    model = GCN_muti_att(input_feature=num_samples*2, hidden_feature=num_samples*2,
-                         num_class=len(train_dataset.label_encoder.classes_), p_dropout=drop_p, num_stage=num_stages).cuda()
     model = GCN_muti_att(input_feature=num_samples*2, hidden_feature=configs.hidden_size,
                          num_class=len(train_dataset.label_encoder.classes_), p_dropout=drop_p, num_stage=num_stages).cuda()
     # setup training parameters, learning rate, optimizer, scheduler
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     parser = create_arg_parser()
     parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of data loading workers (default: 4)')
-    args = parser.parse_args()
+    args = parser.parse_args() 
     
     # Use subset-specific config if available, otherwise use default
     if os.path.exists(os.path.join('configs', f'{args.subset}.ini')):

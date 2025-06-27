@@ -4,7 +4,7 @@ import time
 import argparse
 from multiprocessing import Pool
 import torch
-from configs import Config, create_arg_parser
+from configs import create_arg_parser, get_config_from_args
 
 
 def compute_difference(x):
@@ -75,15 +75,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_processes', type=int, default=3,
                         help='Number of processes for multiprocessing')
     args = parser.parse_args()
-    
-    # Use subset-specific config if available, otherwise use default
-    if os.path.exists(os.path.join('configs', f'{args.subset}.ini')):
-        config_file = os.path.join('configs', f'{args.subset}.ini')
-    else:
-        config_file = args.config
-        
-    configs = Config(config_file)
-    
+
+    configs = get_config_from_args(args)
+
     body_pose_exclude = {9, 10, 11, 22, 23, 24, 12, 13, 14, 19, 20, 21}
     index_file_path = os.path.join(configs.splits_dir, f'{args.subset}.json')
 

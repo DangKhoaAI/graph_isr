@@ -7,7 +7,7 @@ import argparse
 from multiprocessing import Pool
 
 # Import necessary functions/classes from existing files
-from configs import Config, create_arg_parser
+from configs import create_arg_parser, get_config_from_args
 from pose_utils import read_pose_file
 
 def build_lmdb_for_instance(args):
@@ -95,13 +95,7 @@ if __name__ == '__main__':
                         help='Number of processes for multiprocessing LMDB build')
     args = parser.parse_args()
 
-    # Use subset-specific config if available, otherwise use default
-    if os.path.exists(os.path.join('configs', f'{args.subset}.ini')):
-        config_file = os.path.join('configs', f'{args.subset}.ini')
-    else:
-        config_file = args.config
-
-    configs = Config(config_file)
+    configs = get_config_from_args(args)
 
     print(f"Building LMDB for subset: {args.subset}")
     build_lmdb_database(configs, args)

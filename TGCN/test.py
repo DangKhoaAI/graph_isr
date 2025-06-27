@@ -95,20 +95,14 @@ if __name__ == '__main__':
                         help='Number of data loading workers (default: 4)')
     args = parser.parse_args()
     
-    # Set GPU device
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    
-    # Use subset-specific config if available, otherwise use default
-    if os.path.exists(os.path.join('configs', f'{args.subset}.ini')):
-        config_file = os.path.join('configs', f'{args.subset}.ini')
-    else:
-        config_file = args.config
-        
-    configs = Config(config_file)
+
+    # Get configuration object
+    configs = get_config_from_args(args)
     
     # Override config values with command line arguments if provided, using correct config names
     checkpoint_name = args.checkpoint if args.checkpoint else configs.checkpoint_name
-    archive_dir_path = args.archived_dir if args.archived_dir else configs.archive_dir
+    archive_dir_path = args.archive_dir if args.archive_dir else configs.archive_dir
     test_subset = args.test_subset if args.test_subset else args.subset
 
     # Build paths
