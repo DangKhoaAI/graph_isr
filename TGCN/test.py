@@ -1,7 +1,6 @@
 import os
-import argparse
 
-from configs import Config, create_arg_parser
+from configs import create_arg_parser, get_config_from_args
 from lmdb_sign_dataset import LMDBSignDataset
 import numpy as np
 import torch

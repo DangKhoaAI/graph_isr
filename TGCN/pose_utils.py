@@ -3,26 +3,22 @@ import os
 import torch
 
 
-def read_pose_file(filepath):
+def extract_pose_features_from_content(pose_content):
     """
-    Reads a pose JSON file, computes features on-the-fly, and returns only the XY coordinates.
-    This version is independent of pre-generated .pt files and does not create them.
+    Extracts pose features (XY coordinates) from the 'data' content of a merged JSON entry.
+    This version is independent of file paths and directly processes the dictionary content.
     """
     body_pose_exclude = {9, 10, 11, 22, 23, 24, 12, 13, 14, 19, 20, 21}
 
     try:
-        with open(filepath, 'r') as f:
-            content = json.load(f)["people"][0]
-    except (FileNotFoundError, IndexError, KeyError):
-        # Return None if file is not found, or JSON is malformed
-        return None
-
-    try:
-        body_pose = content["pose_keypoints_2d"]
-        left_hand_pose = content["hand_left_keypoints_2d"]
-        right_hand_pose = content["hand_right_keypoints_2d"]
-    except KeyError:
-        # Return None if keypoints are missing
+        # The 'pose_content' here is already the dictionary that was previously
+        # json.load(open(...))["people"][0]
+        # So we directly access its keys.
+        body_pose = pose_content["pose_keypoints_2d"]
+        left_hand_pose = pose_content["hand_left_keypoints_2d"]
+        right_hand_pose = pose_content["hand_right_keypoints_2d"]
+    except (KeyError, IndexError): # Handle cases where "people" or "people[0]" is missing or keypoints are missing
+        # Return None if keypoints are missing or structure is unexpected
         return None
 
     body_pose.extend(left_hand_pose)

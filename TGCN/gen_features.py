@@ -1,7 +1,6 @@
 import json
 import os
 import time
-import argparse
 from multiprocessing import Pool
 import torch
 from configs import create_arg_parser, get_config_from_args
@@ -29,19 +28,39 @@ def gen(entry_list, pose_data_root, features_dir, body_pose_exclude):
             frame_start = instance['frame_start']
             frame_end = instance['frame_end']
 
-            save_to = os.path.join(features_dir, vid)
+            save_to_dir = os.path.join(features_dir, vid)
+            os.makedirs(save_to_dir, exist_ok=True) # Ensure directory exists for saving .pt files
 
-            for frame_id in range(frame_start, frame_end + 1):
-                frame_id = 'image_{}'.format(str(frame_id).zfill(5))
+            # Load the entire video JSON once
+            video_json_path = os.path.join(pose_data_root, f"{vid}.json")
+            try:
+                with open(video_json_path, 'r') as f:
+                    video_data = json.load(f)
+            except FileNotFoundError:
+                print(f"Warning: Video JSON file not found for {vid} at {video_json_path}. Skipping instance.")
+                continue
+            except json.JSONDecodeError:
+                print(f"Warning: Malformed JSON for {vid} at {video_json_path}. Skipping instance.")
+                continue
 
-                ft_path = os.path.join(save_to, frame_id + '_ft.pt')
+            # Create a mapping for quick lookup of frame data
+            frame_data_map = {frame_entry["frame_index"]: frame_entry["data"] for frame_entry in video_data}
+
+            for frame_idx_int in range(frame_start, frame_end + 1):
+                frame_id_str = 'image_{}'.format(str(frame_idx_int).zfill(5)) # For saving filename
+
+                ft_path = os.path.join(save_to_dir, frame_id_str + '_ft.pt')
                 if not os.path.exists(ft_path):
-                    try:
-                        pose_content = json.load(open(os.path.join(pose_data_root,
-                                                                   vid, frame_id + '_keypoints.json')))["people"][0]
-                    except IndexError:
+                    pose_content_data = frame_data_map.get(frame_idx_int)
+                    
+                    if pose_content_data is None:
+                        print(f"Warning: Frame {frame_idx_int} not found for video {vid}. Skipping feature generation for this frame.")
                         continue
 
+                    try:
+                        pose_content = pose_content_data["people"][0] # Access the "people" list from the "data" content
+                    except IndexError:
+                        continue
                     body_pose = pose_content["pose_keypoints_2d"]
                     left_hand_pose = pose_content["hand_left_keypoints_2d"]
                     right_hand_pose = pose_content["hand_right_keypoints_2d"]
@@ -58,9 +77,11 @@ def gen(entry_list, pose_data_root, features_dir, body_pose_exclude):
                     x_diff = torch.FloatTensor(compute_difference(x)) / 2
                     y_diff = torch.FloatTensor(compute_difference(y)) / 2
 
-                    zero_indices = (x_diff == 0).nonzero()
+                    zero_indices = (x_diff == 0).nonzero(as_tuple=True) # Use as_tuple=True for modern PyTorch
+                    # Check if there are any zero_indices before assigning
                     orient = y_diff / x_diff
-                    orient[zero_indices] = 0
+                    if zero_indices[0].numel() > 0:
+                        orient[zero_indices] = 0
 
                     xy = torch.stack([x, y]).transpose_(0, 1)
                     ft = torch.cat([xy, x_diff, y_diff, orient], dim=1)
@@ -87,10 +108,11 @@ if __name__ == '__main__':
     # Before Pool: create all necessary directories to avoid race conditions
     print("Pre-creating all feature directories...")
     for entry in content:
+        # This pre-creation logic is for the old format where features were saved per video_id/frame_id.
+        # Now features are saved per video_id.
         for instance in entry['instances']:
             vid = instance['video_id']
-            save_to = os.path.join(configs.features_dir, vid)
-            os.makedirs(save_to, exist_ok=True)
+            os.makedirs(os.path.join(configs.features_dir, vid), exist_ok=True) # Still relevant for output structure
 
     start_time = time.time()
     
